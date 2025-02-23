@@ -1,4 +1,12 @@
-Compiling and running: 
+# Snake Server
 
-mvn clean package 
+A server for the Snake Online client. 
+
+## Compiling and running
+
+```bash
+mvn clean package
+```
+```bash
 java -jar target/snake_server-1.0-SNAPSHOT.jar
+```

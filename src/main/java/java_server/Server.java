@@ -248,12 +248,12 @@ public class Server {
 
     private static void send(String message, OutputStream outputStream) {
         try {
-            System.out.println(("Sending: ") + message);
+            message += "\n";
+            System.out.println("Sending: " + message);
             outputStream.write(message.getBytes());
         } catch (IOException e) {
-                e.printStackTrace();
+            e.printStackTrace();
         }
-
     }
 
 
@@ -272,6 +272,7 @@ public class Server {
 
     private static void broadcast(String message, Socket... excludeClients) {
         int broadcastCount = 0;
+        message += "\n";
     
         for (Socket clientSocket : clientList) {
             if (Arrays.asList(excludeClients).contains(clientSocket)) {
@@ -281,7 +282,6 @@ public class Server {
                 OutputStream outputStream = clientSocket.getOutputStream();
                 outputStream.write(message.getBytes());
                 broadcastCount++;
-
             } catch (SocketException e) {
                 System.out.println("Client disconnected abruptly: " + clientSocket.getInetAddress());
                 clientList.remove(clientSocket);
@@ -290,7 +290,6 @@ public class Server {
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
-
             } catch (IOException e) {
                 e.printStackTrace();
             }

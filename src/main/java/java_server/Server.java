@@ -181,8 +181,8 @@ public class Server {
                         //msg = appendDelimitor("PLAYING_FIELD", playingField.getWidth(), playingField.getHeight(), playingField.encodeField());
 // SEND PLAYING FIELD   send(msg, outputStream); // PLAYING_FIELD;fieldWidth;fieldHeight;|e|e|e|h/1|e|e|e|b/1|e|
 
-                        msg = appendDelimitor("NEW_PLAYER", newPlayer.getPid(), newPlayer.getName(), newPlayer.getColor(), newPlayer.getXPos(), newPlayer.getYPos());
-                        broadcast(msg, clientSocket); // NEW_PLAYER;pid;name;color;xPos;yPos
+                        msg = appendDelimitor("NEW_PLAYER", newPlayer.getPid(), newPlayer.getName(), newPlayer.getColor(), newPlayer.getLength(), newPlayer.getXPos(), newPlayer.getYPos());
+                        broadcast(msg, clientSocket); // NEW_PLAYER;pid;name;color;length;xPos;yPos
                         
 
                         break;

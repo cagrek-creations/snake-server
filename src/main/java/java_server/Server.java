@@ -248,8 +248,8 @@ public class Server {
 
     private static void send(String message, OutputStream outputStream) {
         try {
-            message += "\n";
             System.out.println("Sending: " + message);
+            message += "\n";
             outputStream.write(message.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
@@ -272,8 +272,9 @@ public class Server {
 
     private static void broadcast(String message, Socket... excludeClients) {
         int broadcastCount = 0;
+        String logMessage = message;
         message += "\n";
-    
+        
         for (Socket clientSocket : clientList) {
             if (Arrays.asList(excludeClients).contains(clientSocket)) {
                 continue;
@@ -295,7 +296,7 @@ public class Server {
             }
         }
     
-        LoggerUtil.logMessage("Broadcasted: '" + message + "' to " + broadcastCount + " clients.");
+        LoggerUtil.logMessage("Broadcasted: '" + logMessage + "' to " + broadcastCount + " clients.");
     }
 
 

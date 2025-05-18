@@ -7,7 +7,7 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Scanner;
 
-
+@SuppressWarnings("all")
 public class ServerTester {
     public static void main(String[] args) {
         try {

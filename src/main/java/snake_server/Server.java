@@ -268,7 +268,7 @@ public class Server {
     private static void send(String message, OutputStream outputStream) {
         try {
             System.out.println("Sending: " + message);
-            // message += "\n";
+            message += "\n";
             outputStream.write(message.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
@@ -292,7 +292,7 @@ public class Server {
     private static void broadcast(String message, Socket... excludeClients) {
         int broadcastCount = 0;
         String logMessage = message;
-        // message += "\n";
+        message += "\n";
         
         for (Socket clientSocket : clientList) {
             if (Arrays.asList(excludeClients).contains(clientSocket)) {
@@ -339,11 +339,11 @@ public class Server {
             // Append head position
             StringBuilder playerInfo = new StringBuilder(
                     appendDelimitor("PLAYER_INFO", p.getPid(), p.getName(), p.getColor()));
-            playerInfo.append(";").append(p.getXPos()).append(",").append(p.getYPos());
+            playerInfo.append(";").append(p.getXPos()).append(";").append(p.getYPos());
 
             // Append body segments positions
             for (BodySegment segment : p.getBody()) {
-                playerInfo.append(";").append(segment.getPosition().getX()).append(",")
+                playerInfo.append(";").append(segment.getPosition().getX()).append(";")
                         .append(segment.getPosition().getY());
             }
 

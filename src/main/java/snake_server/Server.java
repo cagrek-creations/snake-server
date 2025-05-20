@@ -61,15 +61,24 @@ public class Server {
         try {
             double elapsedTime;
             double lastTime = System.currentTimeMillis() / 1000.0; // convert to seconds
+
+            Random rand = new Random();
     
             // Initialize counters and intervals for each power-up
-            List<Double> counters = Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-            List<Double> intervals = Arrays.asList(3.0, 30.0, 45.0, 60.0, 75.0, 90.0); // intervals in seconds
+            List<Double> counters = Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); // Initialize counters to 0
+            List<Double> intervals = Arrays.asList(3.0, 10.0, 45.0, 60.0, 75.0, 90.0); // intervals in seconds
             List<Runnable> actions = Arrays.asList(
                 () -> {
                     playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos
                 },
-                () -> { /* Add logic to spawn power-up 1 */ },
+                () -> {
+                    int chance = rand.nextInt(100) + 1;
+                    if (chance <= 50) {
+                        playingField.spawnScore("inverse_self", 1);
+                    } else {
+                        playingField.spawnScore("inverse_other", 1);
+                    }
+                },
                 () -> { /* Add logic to spawn power-up 2 */ },
                 () -> { /* Add logic to spawn power-up 3 */ },
                 () -> { /* Add logic to spawn power-up 4 */ },
@@ -144,7 +153,7 @@ public class Server {
                             break;
                         }
 
-                        String moveResponse = playingField.checkPosition(playerID, xPos, yPos);
+                        String moveResponse = playingField.checkPosition(playerID, xPos, yPos); 
 
                         if (player.getXPos() == xPos && player.getYPos() == yPos) {
                             break; // Ignore if the player doesn't move
@@ -155,6 +164,16 @@ public class Server {
                             msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "berry", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
                             broadcast(msg);
                         } 
+                        else if (moveResponse == "inverse_self") {
+                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_self", -1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+                            broadcast(msg);
+                        } 
+                        else if (moveResponse == "inverse_other") {
+                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+                            broadcast(msg);
+                        }
+
+
                         // else if (moveResponse == "outOfBounds") {
                         //     msg = appendDelimitor("MOVE_OUT_OF_BOUNDS", params.get(0), params.get(1), params.get(2)); // MOVE_OUT_OF_BOUNDS;pid;xPos;yPos     -- Parameters might be uncessary
                         //     // send(msg, outputStream);
@@ -320,11 +339,11 @@ public class Server {
             // Append head position
             StringBuilder playerInfo = new StringBuilder(
                     appendDelimitor("PLAYER_INFO", p.getPid(), p.getName(), p.getColor()));
-            playerInfo.append(";").append(p.getXPos()).append(",").append(p.getYPos());
+            playerInfo.append(";").append(p.getXPos()).append(";").append(p.getYPos());
 
             // Append body segments positions
             for (BodySegment segment : p.getBody()) {
-                playerInfo.append(";").append(segment.getPosition().getX()).append(",")
+                playerInfo.append(";").append(segment.getPosition().getX()).append(";")
                         .append(segment.getPosition().getY());
             }
 
@@ -556,16 +575,17 @@ public class Server {
 
 
         public String checkPosition(int playerID, int x, int y) {
-            if(x < 0 || x >= width || y < 0 || y >= height) {
+            if (x < 0 || x >= width || y < 0 || y >= height) {
                 return "outOfBounds";
             }
-    
-            if(field[y][x].getType().equals("berry")) {
+
+            String type = field[y][x].getType();
+            if (!type.equals("empty")) {
                 field[y][x].setType("empty");
-                return "berry";
+                return type; // Return the type of the power-up found
             }
-    
-            return null;
+
+        return null;
         }
 
     }

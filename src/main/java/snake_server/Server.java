@@ -66,7 +66,7 @@ public class Server {
     
             // Initialize counters and intervals for each power-up
             List<Double> counters = Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); // Initialize counters to 0
-            List<Double> intervals = Arrays.asList(3.0, 10.0, 45.0, 60.0, 75.0, 90.0); // intervals in seconds
+            List<Double> intervals = Arrays.asList(3.0, 10.0, 10.0, 60.0, 75.0, 90.0); // intervals in seconds
             List<Runnable> actions = Arrays.asList(
                 () -> {
                     playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos
@@ -177,6 +177,14 @@ public class Server {
                         } 
                         else if (moveResponse == "inverse_other") {
                             msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+                            broadcast(msg);
+                        }
+                        else if (moveResponse == "speed_self") {
+                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_self", -1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+                            broadcast(msg);
+                        } 
+                        else if (moveResponse == "speed_other") {
+                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
                             broadcast(msg);
                         }
 

@@ -79,7 +79,14 @@ public class Server {
                         playingField.spawnScore("inverse_other", 1);
                     }
                 },
-                () -> { /* Add logic to spawn power-up 2 */ },
+                () -> {
+                    int chance = rand.nextInt(100) + 1;
+                    if (chance <= 50) {
+                        playingField.spawnScore("speed_self", 1);
+                    } else {
+                        playingField.spawnScore("speed_other", 1);
+                    }
+                },
                 () -> { /* Add logic to spawn power-up 3 */ },
                 () -> { /* Add logic to spawn power-up 4 */ },
                 () -> { /* Add logic to spawn power-up 5 */ }

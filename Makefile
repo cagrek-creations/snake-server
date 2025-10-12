@@ -8,6 +8,9 @@ all: compile run
 compile:
 	$(JAVA_COMPILER) -d . *.java
 
+install:
+	cp exampleconfig.yml config.yml
+
 run:
 	$(JAVA_RUNTIME) $(MAIN_CLASS)
 

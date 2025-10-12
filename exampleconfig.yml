@@ -1,0 +1,11 @@
+config:
+  server:
+    port: 12345
+  items:
+    berry:
+      frequency: 3.0
+    inverse:
+      frequency: 1.0
+    speed:
+      frequency: 1.0
+    

@@ -14,17 +14,32 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Random;
+import org.yaml.snakeyaml.Yaml;
+import java.io.FileInputStream;
+import java.io.InputStream;
 
 // Server class
 public class Server {
 
-    private static final int PORT = 12345;
+    private static int PORT = 12345;
     private static List<Socket> clientList = new ArrayList<>();
     private static ExecutorService executorService = Executors.newCachedThreadPool();
     private static int playerIDCounter = 0;
     private static PlayingField playingField = new PlayingField(40, 30);
 
+    private static double berryFrequency = 1.0;
+    private static double inverseFrequency = 1.0;
+    private static double speedFrequency = 1.0;
+
+
     public static void main(String[] args) {
+        // Load the "config" section from YAML
+        Map<String, Object> config = readYaml("./config.yml", "config");
+
+        System.out.println("Config: " + config);
+        loadConfig(config);
+
+
         ServerSocket serverSocket = null;
         try {
             serverSocket = new ServerSocket(PORT);
@@ -66,7 +81,7 @@ public class Server {
     
             // Initialize counters and intervals for each power-up
             List<Double> counters = Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); // Initialize counters to 0
-            List<Double> intervals = Arrays.asList(3.0, 10.0, 10.0, 60.0, 75.0, 90.0); // intervals in seconds
+            List<Double> intervals = Arrays.asList(berryFrequency, inverseFrequency, speedFrequency, 60.0, 75.0, 90.0); // intervals in seconds
             List<Runnable> actions = Arrays.asList(
                 () -> {
                     playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos
@@ -365,6 +380,35 @@ public class Server {
             msg = playerInfo.toString();
             send(msg, outputStream); // PLAYER_INFO;pid;name;color;headxPos,headyPos;31,12;31,13;
         }
+    }
+
+    private static Map<String, Object> readYaml(String resourcePath, String baseKey) {
+        Yaml yaml = new Yaml();
+
+        try (InputStream in = new FileInputStream("config.yml")) {
+            if (in == null) {
+                throw new RuntimeException("Could not find YAML file: " + resourcePath);
+            }
+
+            Map<String, Object> yamlMap = yaml.load(in);
+            Map<String, Object> baseMap = (Map<String, Object>) yamlMap.get(baseKey);
+            return baseMap;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static void loadConfig(Map<String, Object> config) {
+        Map<String, Object> server = (Map<String, Object>) config.get("server");
+        PORT = ((Number) server.get("port")).intValue();
+
+        Map<String, Object> items = (Map<String, Object>) config.get("items");
+
+        berryFrequency = ((Number) ((Map<String, Object>) items.get("berry")).get("frequency")).doubleValue();
+        inverseFrequency = ((Number) ((Map<String, Object>) items.get("inverse")).get("frequency")).doubleValue();
+        speedFrequency = ((Number) ((Map<String, Object>) items.get("speed")).get("frequency")).doubleValue();
     }
 
 

@@ -1,15 +1,15 @@
 
-JAVA_COMPILER = javac
+JAVA_COMPILER = mvn
 JAVA_RUNTIME = java
 MAIN_CLASS = snake_server.Server
 
 all: compile run
 
 compile:
-	$(JAVA_COMPILER) -d . *.java
+	$(JAVA_COMPILER) compile
 
 run:
-	$(JAVA_RUNTIME) $(MAIN_CLASS)
+	mvn exec:java -Dexec.mainClass="snake_server.Server"
 
 clean:
-	rm -rf *.class
+	mvn clean

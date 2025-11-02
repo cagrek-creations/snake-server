@@ -25,7 +25,7 @@ public class Server {
     private static List<Socket> clientList = new ArrayList<>();
     private static ExecutorService executorService = Executors.newCachedThreadPool();
     private static int playerIDCounter = 0;
-    public static PlayingField playingField = new PlayingField(40, 30);
+    public static PlayingField playingField = new PlayingField(50, 25);
 
     private static double berryFrequency = 1.0;
     private static double inverseFrequency = 1.0;
@@ -102,9 +102,16 @@ public class Server {
                         playingField.spawnScore("speed_other", 1);
                     }
                 },
-                () -> { /* Add logic to spawn power-up 3 */ },
-                () -> { /* Add logic to spawn power-up 4 */ },
-                () -> { /* Add logic to spawn power-up 5 */ }
+                // TODO: Not implemented on client side yet...
+                () -> {
+                    playingField.spawnScore("freeze", 1);
+                },
+                () -> {
+                    playingField.spawnScore("ghost", 1);
+                },
+                () -> {
+                    playingField.spawnScore("rage", 1);
+                }
             );
     
             while (true) {

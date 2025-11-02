@@ -115,6 +115,11 @@ public class Server {
             );
     
             while (true) {
+                if (clientList.size() < 2) {
+                    broadcast("WAITING_FOR_PLAYERS");
+                    Thread.sleep(500);
+                    continue;
+                }
                 double currentTime = System.currentTimeMillis() / 1000.0; // convert to seconds
                 elapsedTime = currentTime - lastTime;
                 lastTime = currentTime;

@@ -31,6 +31,13 @@ public class Server {
     private static double inverseFrequency = 1.0;
     private static double speedFrequency = 1.0;
 
+    private static boolean gameStarted = false;
+
+    private static List<Double> counters = new ArrayList<>();
+    private static List<Double> intervals = new ArrayList<>();
+    private static List<Runnable> actions = new ArrayList<>();
+
+
 
     public static void main(String[] args) {
         // Load the "config" section from YAML
@@ -53,7 +60,10 @@ public class Server {
                 System.out.println("Client connected: " + clientSocket.getInetAddress());
 
                 // Add the client socket to the list
-                clientList.add(clientSocket);
+                synchronized (clientList) {
+                    clientList.add(clientSocket);
+                    clientList.notifyAll();
+                }
 
                 // Handle client communication in a separate thread
                 executorService.execute(() -> handleClient(clientSocket));
@@ -77,49 +87,16 @@ public class Server {
             double elapsedTime;
             double lastTime = System.currentTimeMillis() / 1000.0; // convert to seconds
 
-            Random rand = new Random();
-    
-            // Initialize counters and intervals for each power-up
-            List<Double> counters = Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); // Initialize counters to 0
-            List<Double> intervals = Arrays.asList(berryFrequency, inverseFrequency, speedFrequency, 60.0, 75.0, 90.0); // intervals in seconds
-            List<Runnable> actions = Arrays.asList(
-                () -> {
-                    playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos
-                },
-                () -> {
-                    int chance = rand.nextInt(100) + 1;
-                    if (chance <= 50) {
-                        playingField.spawnScore("inverse_self", 1);
-                    } else {
-                        playingField.spawnScore("inverse_other", 1);
-                    }
-                },
-                () -> {
-                    int chance = rand.nextInt(100) + 1;
-                    if (chance <= 50) {
-                        playingField.spawnScore("speed_self", 1);
-                    } else {
-                        playingField.spawnScore("speed_other", 1);
-                    }
-                },
-                // TODO: Not implemented on client side yet...
-                () -> {
-                    playingField.spawnScore("freeze", 1);
-                },
-                () -> {
-                    playingField.spawnScore("ghost", 1);
-                },
-                () -> {
-                    playingField.spawnScore("rage", 1);
+            setupIntervals();
+
+            synchronized (clientList) {
+                while (clientList.size() < 2) {
+                    broadcast("WAITING_FOR_PLAYERS");
+                    clientList.wait();
                 }
-            );
+            }
     
             while (true) {
-                if (clientList.size() < 2) {
-                    broadcast("WAITING_FOR_PLAYERS");
-                    Thread.sleep(500);
-                    continue;
-                }
                 double currentTime = System.currentTimeMillis() / 1000.0; // convert to seconds
                 elapsedTime = currentTime - lastTime;
                 lastTime = currentTime;
@@ -421,5 +398,42 @@ public class Server {
         berryFrequency = ((Number) ((Map<String, Object>) items.get("berry")).get("frequency")).doubleValue();
         inverseFrequency = ((Number) ((Map<String, Object>) items.get("inverse")).get("frequency")).doubleValue();
         speedFrequency = ((Number) ((Map<String, Object>) items.get("speed")).get("frequency")).doubleValue();
+    }
+
+    private static void setupIntervals() {
+        Random rand = new Random();
+        counters = Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); // Initialize counters to 0
+        intervals = Arrays.asList(berryFrequency, inverseFrequency, speedFrequency, 60.0, 75.0, 90.0); // intervals in seconds
+        actions = Arrays.asList(
+            () -> {
+                playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos
+            },
+            () -> {
+                int chance = rand.nextInt(100) + 1;
+                if (chance <= 50) {
+                    playingField.spawnScore("inverse_self", 1);
+                } else {
+                    playingField.spawnScore("inverse_other", 1);
+                }
+            },
+            () -> {
+                int chance = rand.nextInt(100) + 1;
+                if (chance <= 50) {
+                    playingField.spawnScore("speed_self", 1);
+                } else {
+                    playingField.spawnScore("speed_other", 1);
+                }
+            },
+            // TODO: Not implemented on client side yet...
+            () -> {
+                playingField.spawnScore("freeze", 1);
+            },
+            () -> {
+                playingField.spawnScore("ghost", 1);
+            },
+            () -> {
+                playingField.spawnScore("rage", 1);
+            }
+        );
     }
 }

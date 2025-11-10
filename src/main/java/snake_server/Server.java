@@ -85,19 +85,19 @@ public class Server {
     private static void handleGame() {
         try {
             double elapsedTime;
-            double lastTime = System.currentTimeMillis() / 1000.0; // convert to seconds
+            double lastTime = System.currentTimeMillis() / 1000.0;
 
             setupIntervals();
 
             synchronized (clientList) {
-                while (clientList.size() < 2) {
+                while (clientList.size() < 0) {
                     broadcast("WAITING_FOR_PLAYERS");
                     clientList.wait();
                 }
             }
     
             while (true) {
-                double currentTime = System.currentTimeMillis() / 1000.0; // convert to seconds
+                double currentTime = System.currentTimeMillis() / 1000.0;
                 elapsedTime = currentTime - lastTime;
                 lastTime = currentTime;
     

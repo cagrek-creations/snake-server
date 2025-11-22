@@ -158,6 +158,11 @@ public class PlayingField {
         }
 
         String type = field[y][x].getType();
+
+        if (type.equals("playerbody") || type.equals("head")) {
+            System.out.println("GAME OVER");
+        }
+
         if (!type.equals("empty")) {
             field[y][x].setType("empty");
             return type; // Return the type of the power-up found

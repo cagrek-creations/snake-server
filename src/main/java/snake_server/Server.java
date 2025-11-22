@@ -102,7 +102,7 @@ public class Server {
                 lastTime = currentTime;
     
                 for (int i = 0; i < counters.size(); i++) {
-                    if (counters.get(i) >= intervals.get(i)) {
+                    if (counters.get(i) >= intervals.get(i) && intervals.get(i) != -1) {
                         actions.get(i).run();
                         counters.set(i, 0.0);
                     }

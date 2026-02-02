@@ -160,7 +160,7 @@ public class PlayingField {
         String type = field[y][x].getType();
 
         if (type.equals("playerbody") || type.equals("head")) {
-            System.out.println("GAME OVER");
+            return type;
         }
 
         if (!type.equals("empty")) {

@@ -153,56 +153,7 @@ public class Server {
                         break;
                     
                     case "PLAYER_UPDATE_POSITION": // PLAYER_UPDATE_POSITION;pid;xPos;yPos      // FIX NON EXISTENT SNAKE!!!!
-                        int playerID = Integer.parseInt(params.get(0));
-                        Player player = playingField.getPlayer(playerID);
-                        int xPos = Integer.parseInt(params.get(1));
-                        int yPos = Integer.parseInt(params.get(2));
-
-
-                        if (xPos < 0 || xPos >= playingField.getWidth() || yPos < 0 || yPos >= playingField.getHeight()) {
-                            System.out.println("Invalid position: " + xPos + ", " + yPos);
-                            break;
-                        }
-
-                        String moveResponse = playingField.checkPosition(playerID, xPos, yPos); 
-
-                        if (player.getXPos() == xPos && player.getYPos() == yPos) {
-                            break; // Ignore if the player doesn't move
-                        }
-
-                        if (moveResponse == "berry"){ // SCORE_COLLECTED;pid;type;magnitude;xPos;yPos
-                            player.setLength(player.getLength() + 1);
-                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "berry", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
-                            broadcast(msg);
-                        } 
-                        else if (moveResponse == "inverse_self") {
-                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_self", -1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
-                            broadcast(msg);
-                        } 
-                        else if (moveResponse == "inverse_other") {
-                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
-                            broadcast(msg);
-                        }
-                        else if (moveResponse == "speed_self") {
-                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_self", -1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
-                            broadcast(msg);
-                        } 
-                        else if (moveResponse == "speed_other") {
-                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
-                            broadcast(msg);
-                        }
-
-
-                        // else if (moveResponse == "outOfBounds") {
-                        //     msg = appendDelimitor("MOVE_OUT_OF_BOUNDS", params.get(0), params.get(1), params.get(2)); // MOVE_OUT_OF_BOUNDS;pid;xPos;yPos     -- Parameters might be uncessary
-                        //     // send(msg, outputStream);
-                        //     break;
-                        // }
-
-                        player.move(xPos, yPos, playingField);
-
-                        msg = appendDelimitor("PLAYER_NEW_POS", params.get(0), params.get(1), params.get(2));
-                        broadcast(msg, clientSocket); // PLAYER_NEW_POS;pid;xPos;yPos
+                        handleMove();
                         break;
 
                     case "ADD_NEW_PLAYER": // ADD_NEW_PLAYER;name;color
@@ -436,4 +387,58 @@ public class Server {
             }
         );
     }
+
+	private static void handleMove() {
+		int playerID = Integer.parseInt(params.get(0));
+		Player player = playingField.getPlayer(playerID);
+		int xPos = Integer.parseInt(params.get(1));
+		int yPos = Integer.parseInt(params.get(2));
+
+
+		if (xPos < 0 || xPos >= playingField.getWidth() || yPos < 0 || yPos >= playingField.getHeight()) {
+			System.out.println("Invalid position: " + xPos + ", " + yPos);
+			break;
+		}
+
+		String moveResponse = playingField.checkPosition(playerID, xPos, yPos); 
+
+		if (player.getXPos() == xPos && player.getYPos() == yPos) {
+			break; // Ignore if the player doesn't move
+		}
+
+		if (moveResponse == "berry"){ // SCORE_COLLECTED;pid;type;magnitude;xPos;yPos
+			player.setLength(player.getLength() + 1);
+			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "berry", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+			broadcast(msg);
+		} 
+		else if (moveResponse == "inverse_self") {
+			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_self", -1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+			broadcast(msg);
+		} 
+		else if (moveResponse == "inverse_other") {
+			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+			broadcast(msg);
+		}
+		else if (moveResponse == "speed_self") {
+			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_self", -1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+			broadcast(msg);
+		} 
+		else if (moveResponse == "speed_other") {
+			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+			broadcast(msg);
+		}
+
+
+		// else if (moveResponse == "outOfBounds") {
+		//     msg = appendDelimitor("MOVE_OUT_OF_BOUNDS", params.get(0), params.get(1), params.get(2)); // MOVE_OUT_OF_BOUNDS;pid;xPos;yPos     -- Parameters might be uncessary
+		//     // send(msg, outputStream);
+		//     break;
+		// }
+
+		player.move(xPos, yPos, playingField);
+
+		msg = appendDelimitor("PLAYER_NEW_POS", params.get(0), params.get(1), params.get(2));
+		broadcast(msg, clientSocket); // PLAYER_NEW_POS;pid;xPos;yPos
+	}
+
 }

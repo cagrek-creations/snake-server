@@ -153,7 +153,7 @@ public class Server {
                         break;
                     
                     case "PLAYER_UPDATE_POSITION": // PLAYER_UPDATE_POSITION;pid;xPos;yPos      // FIX NON EXISTENT SNAKE!!!!
-                        handleMove();
+                        handleMove(params, clientSocket);
                         break;
 
                     case "ADD_NEW_PLAYER": // ADD_NEW_PLAYER;name;color
@@ -388,42 +388,38 @@ public class Server {
         );
     }
 
-	private static void handleMove() {
+	private static void handleMove(List<String> params, Socket clientSocket) {
 		int playerID = Integer.parseInt(params.get(0));
 		Player player = playingField.getPlayer(playerID);
 		int xPos = Integer.parseInt(params.get(1));
 		int yPos = Integer.parseInt(params.get(2));
-
+		String msg;
 
 		if (xPos < 0 || xPos >= playingField.getWidth() || yPos < 0 || yPos >= playingField.getHeight()) {
 			System.out.println("Invalid position: " + xPos + ", " + yPos);
-			break;
+			return;
 		}
-
-		String moveResponse = playingField.checkPosition(playerID, xPos, yPos); 
 
 		if (player.getXPos() == xPos && player.getYPos() == yPos) {
-			break; // Ignore if the player doesn't move
+			return; // Ignore if the player doesn't move
 		}
+
+		String moveResponse = playingField.checkPosition(playerID, xPos, yPos);
 
 		if (moveResponse == "berry"){ // SCORE_COLLECTED;pid;type;magnitude;xPos;yPos
 			player.setLength(player.getLength() + 1);
 			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "berry", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
 			broadcast(msg);
-		} 
-		else if (moveResponse == "inverse_self") {
+		} else if (moveResponse == "inverse_self") {
 			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_self", -1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
 			broadcast(msg);
-		} 
-		else if (moveResponse == "inverse_other") {
+		} else if (moveResponse == "inverse_other") {
 			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "inverse_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
 			broadcast(msg);
-		}
-		else if (moveResponse == "speed_self") {
+		} else if (moveResponse == "speed_self") {
 			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_self", -1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
 			broadcast(msg);
-		} 
-		else if (moveResponse == "speed_other") {
+		} else if (moveResponse == "speed_other") {
 			msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
 			broadcast(msg);
 		}

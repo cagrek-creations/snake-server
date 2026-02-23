@@ -23,6 +23,7 @@ public class Server {
 
     private static int PORT = 12345;
     private static List<Socket> clientList = new ArrayList<>();
+	private static List<Player> players = new ArrayList<>();
     private static ExecutorService executorService = Executors.newCachedThreadPool();
     private static int playerIDCounter = 0;
     public static PlayingField playingField = new PlayingField(50, 25);
@@ -45,7 +46,8 @@ public class Server {
 
         System.out.println("Config: " + config);
         loadConfig(config);
-
+		// setupIntervals() needs to be called after loadConfig to ensure proper values.
+        setupIntervals();
 
         ServerSocket serverSocket = null;
         try {
@@ -53,6 +55,7 @@ public class Server {
             System.out.println("Server listening on port " + PORT);
 
             // Start the game loop
+			gameStarted = true;
             executorService.execute(() -> handleGame());
 
             while (true) {
@@ -83,39 +86,41 @@ public class Server {
 
     
     private static void handleGame() {
-        try {
-            double elapsedTime;
-            double lastTime = System.currentTimeMillis() / 1000.0;
+		// Always run the server
+		while (true) {
+			try {
+				double elapsedTime; // TODO: break out these to server variables?
+				double lastTime = System.currentTimeMillis() / 1000.0;
 
-            setupIntervals();
+				synchronized (clientList) {
+					while (clientList.size() < 0) { // TODO: remove this while-loop and handle game state based on 
+													// gameStarted variable.
+						broadcast("WAITING_FOR_PLAYERS");
+						clientList.wait();
+					}
+				}
 
-            synchronized (clientList) {
-                while (clientList.size() < 0) {
-                    broadcast("WAITING_FOR_PLAYERS");
-                    clientList.wait();
-                }
-            }
-    
-            while (true) {
-                double currentTime = System.currentTimeMillis() / 1000.0;
-                elapsedTime = currentTime - lastTime;
-                lastTime = currentTime;
-    
-                for (int i = 0; i < counters.size(); i++) {
-                    if (counters.get(i) >= intervals.get(i) && (intervals.get(i) > 0)) {
-                        actions.get(i).run();
-                        counters.set(i, 0.0);
-                    }
-                }
-    
-                // Update counters
-                for (int i = 0; i < counters.size(); i++) {
-                    counters.set(i, counters.get(i) + elapsedTime);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+				while (gameStarted) {
+					double currentTime = System.currentTimeMillis() / 1000.0;
+					elapsedTime = currentTime - lastTime;
+					lastTime = currentTime;
+
+					for (int i = 0; i < counters.size(); i++) {
+						if (counters.get(i) >= intervals.get(i) && (intervals.get(i) > 0)) {
+							actions.get(i).run();
+							counters.set(i, 0.0);
+						}
+					}
+
+					// Update counters
+					for (int i = 0; i < counters.size(); i++) {
+						counters.set(i, counters.get(i) + elapsedTime);
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
     }
 
     

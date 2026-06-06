@@ -91,7 +91,7 @@ public class Server {
 
             synchronized (clientList) {
                 while (clientList.size() < 0) {
-                    broadcast("WAITING_FOR_PLAYERS");
+                    broadcast("GAME_STARTED");
                     clientList.wait();
                 }
             }
@@ -211,9 +211,11 @@ public class Server {
                         playingField.addPlayer(newPlayer);
                         playingField.spawnPlayer(newPlayer);
 
-                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), newPlayer.getXPos(), newPlayer.getYPos(), playingField.getWidth(), playingField.getHeight());
-                        send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight
-
+                        // If a player joins a match that is already on-going, set them to spectator.
+                        boolean isSpectator = gameStarted;
+                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), newPlayer.getXPos(), newPlayer.getYPos(), playingField.getWidth(), playingField.getHeight(), isSpectator);
+                        // TODO: Doesn't give a size?
+                        send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight;isSpectator;
                         sendGameState(newPlayer, outputStream);
 
                         //msg = appendDelimitor("PLAYING_FIELD", playingField.getWidth(), playingField.getHeight(), playingField.encodeField());
@@ -254,7 +256,6 @@ public class Server {
                         System.out.println("Unknown command: " + command.getCommand());
                 }
 
-
             }
         } catch (IOException e) {
             if (e instanceof java.net.SocketException && e.getMessage().equals("Connection reset")) {
@@ -265,6 +266,27 @@ public class Server {
                 e.printStackTrace();
             }
         }
+    }
+
+    // TODO: Should this function also present the winner etc?
+    private static void resetGame() {
+        String msg;
+
+        msg = "GAME_STOP";
+        broadcast(msg);
+
+        msg = "GAME_RESET";
+        broadcast(msg);
+
+        // Set new positions
+
+        // Clear board of berries
+
+        // Change board?
+
+        msg = "GAME_START"; // TODO: 3... 2... 1...?
+        broadcast(msg);
+
     }
 
     private static void removeClient(Socket clientSocket) {
@@ -282,8 +304,6 @@ public class Server {
         }
     }
     
-
-
     private static void send(String message, OutputStream outputStream) {
         try {
             System.out.println("Sending: " + message);
@@ -293,7 +313,6 @@ public class Server {
             e.printStackTrace();
         }
     }
-
 
     public static String appendDelimitor(Object... parameters) {
         StringBuilder sb = new StringBuilder();
@@ -306,7 +325,6 @@ public class Server {
         }
         return sb.toString();
     }
-
 
     public static void broadcast(String message, Socket... excludeClients) {
         int broadcastCount = 0;
@@ -336,7 +354,6 @@ public class Server {
     
         LoggerUtil.logMessage("Broadcasted: '" + logMessage + "' to " + broadcastCount + " clients.");
     }
-
 
     private static void sendGameState(Player newPlayer, OutputStream outputStream) throws IOException {
         String msg;
@@ -403,7 +420,7 @@ public class Server {
     private static void setupIntervals() {
         Random rand = new Random();
         counters = Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); // Initialize counters to 0
-        intervals = Arrays.asList(berryFrequency, inverseFrequency, speedFrequency, 60.0, 75.0, 90.0); // intervals in seconds
+        intervals = Arrays.asList(berryFrequency, inverseFrequency, speedFrequency, -1.0, -1.0, -1.0); // intervals in seconds
         actions = Arrays.asList(
             () -> {
                 playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos

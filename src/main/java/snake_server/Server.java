@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,6 +37,7 @@ public class Server {
     private static List<Double> counters = new ArrayList<>();
     private static List<Double> intervals = new ArrayList<>();
     private static List<Runnable> actions = new ArrayList<>();
+    private static HashMap<Socket, Integer> playerSockets = new HashMap<>();
 
 
 
@@ -57,6 +59,7 @@ public class Server {
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
+                String msg;
                 System.out.println("Client connected: " + clientSocket.getInetAddress());
 
                 // Add the client socket to the list
@@ -86,17 +89,26 @@ public class Server {
         try {
             double elapsedTime;
             double lastTime = System.currentTimeMillis() / 1000.0;
-
+            String msg;
             setupIntervals();
-
-            synchronized (clientList) {
-                while (clientList.size() < 0) {
-                    broadcast("WAITING_FOR_PLAYERS");
-                    clientList.wait();
-                }
-            }
     
             while (true) {
+
+                // If game hasn't started, just wait.
+                if (!gameStarted) {
+                    synchronized (clientList) {
+                        if (playerSockets.size() < 2) {
+                            msg = appendDelimitor("WAITING_FOR_PLAYERS", "1");
+                            broadcast(msg);
+                        } else if (!gameStarted) {
+                            gameStarted = true;
+                            msg = appendDelimitor("GAME_STARTING", 10);
+                            broadcast(msg);
+                        }
+                    }
+                    Thread.sleep(5000);
+                }
+
                 double currentTime = System.currentTimeMillis() / 1000.0;
                 elapsedTime = currentTime - lastTime;
                 lastTime = currentTime;
@@ -134,6 +146,7 @@ public class Server {
                     // Client disconnected
                     System.out.println("Client disconnected: " + clientSocket.getInetAddress());
                     clientList.remove(clientSocket);
+                    playerSockets.remove(clientSocket);
                     break;
                 }
 
@@ -206,23 +219,24 @@ public class Server {
                         break;
 
                     case "ADD_NEW_PLAYER": // ADD_NEW_PLAYER;name;color
-
-                        Player newPlayer = new Player(clientSocket, playerIDCounter++, params.get(0), params.get(1)); // 0 = pid, 1 = name, 2 = color
+                        int pid = playerIDCounter++;
+                        Player newPlayer = new Player(clientSocket, pid, params.get(0), params.get(1)); // 0 = pid, 1 = name, 2 = color
                         playingField.addPlayer(newPlayer);
                         playingField.spawnPlayer(newPlayer);
 
-                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), newPlayer.getXPos(), newPlayer.getYPos(), playingField.getWidth(), playingField.getHeight());
-                        send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight
-
+                        // If a player joins a match that is already on-going, set them to spectator.
+                        boolean isSpectator = gameStarted;
+                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), newPlayer.getXPos(), newPlayer.getYPos(), playingField.getWidth(), playingField.getHeight(), isSpectator);
+                        // TODO: Doesn't give a size?
+                        send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight;isSpectator;
                         sendGameState(newPlayer, outputStream);
+                        playerSockets.put(clientSocket, pid);
 
                         //msg = appendDelimitor("PLAYING_FIELD", playingField.getWidth(), playingField.getHeight(), playingField.encodeField());
 // SEND PLAYING FIELD   send(msg, outputStream); // PLAYING_FIELD;fieldWidth;fieldHeight;|e|e|e|h/1|e|e|e|b/1|e|
 
                         msg = appendDelimitor("NEW_PLAYER", newPlayer.getPid(), newPlayer.getName(), newPlayer.getColor(), newPlayer.getLength(), newPlayer.getXPos(), newPlayer.getYPos());
                         broadcast(msg, clientSocket); // NEW_PLAYER;pid;name;color;length;xPos;yPos
-                        
-
                         break;
 
 
@@ -254,17 +268,39 @@ public class Server {
                         System.out.println("Unknown command: " + command.getCommand());
                 }
 
-
             }
         } catch (IOException e) {
             if (e instanceof java.net.SocketException && e.getMessage().equals("Connection reset")) {
                 // Client disconnected abruptly
                 System.out.println("Client disconnected abruptly: " + clientSocket.getInetAddress());
+                String msg = appendDelimitor("DISCONNECTED", playerSockets.get(clientSocket));
                 removeClient(clientSocket);
+                broadcast(msg, clientSocket);
             } else {
                 e.printStackTrace();
             }
         }
+    }
+
+    // TODO: Should this function also present the winner etc?
+    private static void resetGame() {
+        String msg;
+
+        msg = "GAME_STOP";
+        broadcast(msg);
+
+        msg = "GAME_RESET";
+        broadcast(msg);
+
+        // Set new positions
+
+        // Clear board of berries
+
+        // Change board?
+
+        msg = "GAME_START"; // TODO: 3... 2... 1...?
+        broadcast(msg);
+
     }
 
     private static void removeClient(Socket clientSocket) {
@@ -276,14 +312,13 @@ public class Server {
                 }
             }
             clientList.remove(clientSocket);
+            playerSockets.remove(clientSocket);
             clientSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     
-
-
     private static void send(String message, OutputStream outputStream) {
         try {
             System.out.println("Sending: " + message);
@@ -293,7 +328,6 @@ public class Server {
             e.printStackTrace();
         }
     }
-
 
     public static String appendDelimitor(Object... parameters) {
         StringBuilder sb = new StringBuilder();
@@ -306,7 +340,6 @@ public class Server {
         }
         return sb.toString();
     }
-
 
     public static void broadcast(String message, Socket... excludeClients) {
         int broadcastCount = 0;
@@ -324,6 +357,7 @@ public class Server {
             } catch (SocketException e) {
                 System.out.println("Client disconnected abruptly: " + clientSocket.getInetAddress());
                 clientList.remove(clientSocket);
+                playerSockets.remove(clientSocket);
                 try {
                     clientSocket.close();
                 } catch (IOException ex) {
@@ -336,7 +370,6 @@ public class Server {
     
         LoggerUtil.logMessage("Broadcasted: '" + logMessage + "' to " + broadcastCount + " clients.");
     }
-
 
     private static void sendGameState(Player newPlayer, OutputStream outputStream) throws IOException {
         String msg;
@@ -403,7 +436,7 @@ public class Server {
     private static void setupIntervals() {
         Random rand = new Random();
         counters = Arrays.asList(0.0, 0.0, 0.0, 0.0, 0.0, 0.0); // Initialize counters to 0
-        intervals = Arrays.asList(berryFrequency, inverseFrequency, speedFrequency, 60.0, 75.0, 90.0); // intervals in seconds
+        intervals = Arrays.asList(berryFrequency, inverseFrequency, speedFrequency, -1.0, -1.0, -1.0); // intervals in seconds
         actions = Arrays.asList(
             () -> {
                 playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos

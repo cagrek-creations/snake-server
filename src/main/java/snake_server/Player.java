@@ -18,7 +18,7 @@ public class Player {
         this.pid = pid;
         this.name = name;
         this.color = color;
-        this.length = 6;
+        this.length = 6; // TODO: This should be sent to the client.
         this.body = new ArrayList<>();
     }
 

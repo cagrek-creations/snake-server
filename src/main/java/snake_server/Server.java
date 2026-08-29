@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -58,6 +59,7 @@ public class Server {
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
+                String msg;
                 System.out.println("Client connected: " + clientSocket.getInetAddress());
 
                 // Add the client socket to the list
@@ -87,17 +89,26 @@ public class Server {
         try {
             double elapsedTime;
             double lastTime = System.currentTimeMillis() / 1000.0;
-
+            String msg;
             setupIntervals();
-
-            synchronized (clientList) {
-                while (clientList.size() < 0) {
-                    broadcast("GAME_STARTED");
-                    clientList.wait();
-                }
-            }
     
             while (true) {
+
+                // If game hasn't started, just wait.
+                if (!gameStarted) {
+                    synchronized (clientList) {
+                        if (playerSockets.size() < 2) {
+                            msg = appendDelimitor("WAITING_FOR_PLAYERS", "1");
+                            broadcast(msg);
+                        } else if (!gameStarted) {
+                            gameStarted = true;
+                            msg = appendDelimitor("GAME_STARTING", 10);
+                            broadcast(msg);
+                        }
+                    }
+                    Thread.sleep(5000);
+                }
+
                 double currentTime = System.currentTimeMillis() / 1000.0;
                 elapsedTime = currentTime - lastTime;
                 lastTime = currentTime;
@@ -135,6 +146,7 @@ public class Server {
                     // Client disconnected
                     System.out.println("Client disconnected: " + clientSocket.getInetAddress());
                     clientList.remove(clientSocket);
+                    playerSockets.remove(clientSocket);
                     break;
                 }
 
@@ -208,7 +220,6 @@ public class Server {
 
                     case "ADD_NEW_PLAYER": // ADD_NEW_PLAYER;name;color
                         int pid = playerIDCounter++;
-                        playerSockets.put(clientSocket, pid);
                         Player newPlayer = new Player(clientSocket, pid, params.get(0), params.get(1)); // 0 = pid, 1 = name, 2 = color
                         playingField.addPlayer(newPlayer);
                         playingField.spawnPlayer(newPlayer);
@@ -219,14 +230,13 @@ public class Server {
                         // TODO: Doesn't give a size?
                         send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight;isSpectator;
                         sendGameState(newPlayer, outputStream);
+                        playerSockets.put(clientSocket, pid);
 
                         //msg = appendDelimitor("PLAYING_FIELD", playingField.getWidth(), playingField.getHeight(), playingField.encodeField());
 // SEND PLAYING FIELD   send(msg, outputStream); // PLAYING_FIELD;fieldWidth;fieldHeight;|e|e|e|h/1|e|e|e|b/1|e|
 
                         msg = appendDelimitor("NEW_PLAYER", newPlayer.getPid(), newPlayer.getName(), newPlayer.getColor(), newPlayer.getLength(), newPlayer.getXPos(), newPlayer.getYPos());
                         broadcast(msg, clientSocket); // NEW_PLAYER;pid;name;color;length;xPos;yPos
-                        
-
                         break;
 
 
@@ -263,8 +273,8 @@ public class Server {
             if (e instanceof java.net.SocketException && e.getMessage().equals("Connection reset")) {
                 // Client disconnected abruptly
                 System.out.println("Client disconnected abruptly: " + clientSocket.getInetAddress());
-                removeClient(clientSocket);
                 String msg = appendDelimitor("DISCONNECTED", playerSockets.get(clientSocket));
+                removeClient(clientSocket);
                 broadcast(msg, clientSocket);
             } else {
                 e.printStackTrace();
@@ -302,6 +312,7 @@ public class Server {
                 }
             }
             clientList.remove(clientSocket);
+            playerSockets.remove(clientSocket);
             clientSocket.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -346,6 +357,7 @@ public class Server {
             } catch (SocketException e) {
                 System.out.println("Client disconnected abruptly: " + clientSocket.getInetAddress());
                 clientList.remove(clientSocket);
+                playerSockets.remove(clientSocket);
                 try {
                     clientSocket.close();
                 } catch (IOException ex) {

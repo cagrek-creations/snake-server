@@ -36,6 +36,7 @@ public class Server {
     private static List<Double> counters = new ArrayList<>();
     private static List<Double> intervals = new ArrayList<>();
     private static List<Runnable> actions = new ArrayList<>();
+    private static HashMap<Socket, Integer> playerSockets = new HashMap<>();
 
 
 
@@ -206,8 +207,9 @@ public class Server {
                         break;
 
                     case "ADD_NEW_PLAYER": // ADD_NEW_PLAYER;name;color
-
-                        Player newPlayer = new Player(clientSocket, playerIDCounter++, params.get(0), params.get(1)); // 0 = pid, 1 = name, 2 = color
+                        int pid = playerIDCounter++;
+                        playerSockets.put(clientSocket, pid);
+                        Player newPlayer = new Player(clientSocket, pid, params.get(0), params.get(1)); // 0 = pid, 1 = name, 2 = color
                         playingField.addPlayer(newPlayer);
                         playingField.spawnPlayer(newPlayer);
 
@@ -262,6 +264,8 @@ public class Server {
                 // Client disconnected abruptly
                 System.out.println("Client disconnected abruptly: " + clientSocket.getInetAddress());
                 removeClient(clientSocket);
+                String msg = appendDelimitor("DISCONNECTED", playerSockets.get(clientSocket));
+                broadcast(msg, clientSocket);
             } else {
                 e.printStackTrace();
             }

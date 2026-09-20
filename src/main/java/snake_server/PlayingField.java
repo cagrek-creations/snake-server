@@ -52,6 +52,9 @@ public class PlayingField {
         field[yPos][xPos].setPlayerID(playerID);
     
         player.setHeadPos(xPos, yPos);
+
+
+
     }
 
     public void addPlayer(Player player) {

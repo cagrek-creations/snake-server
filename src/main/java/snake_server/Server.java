@@ -400,7 +400,7 @@ public class Server {
             }
 
             msg = playerInfo.toString();
-            send(msg, outputStream); // PLAYER_INFO;pid;name;color;headxPos,headyPos;31,12;31,13;
+            send(msg, outputStream); // PLAYER_INFO;pid;name;size;color;headxPos,headyPos;31,12;31,13;
         }
     }
 

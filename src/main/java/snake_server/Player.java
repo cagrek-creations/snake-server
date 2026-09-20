@@ -34,7 +34,13 @@ public class Player {
     public int getXPos() { return headPosition.getX(); }
     public int getYPos() { return headPosition.getY(); }
 
-    public void setHeadPos(int x, int y) { headPosition = new Position(x, y); }
+    public void setHeadPos(int x, int y) {
+        headPosition = new Position(x, y);
+
+        for (int i = 0; i < this.length - 1; i++) {
+            body.add(new BodySegment(x, y));
+        }
+    }
 
     public int getLength() { return length; }
 
@@ -45,24 +51,24 @@ public class Player {
     public void move(int newX, int newY, PlayingField playingField) {
         // Clear previous head position from the playing field
         playingField.getField()[headPosition.getY()][headPosition.getX()].clear();
-    
+
         // Add new head position to the body
         body.add(0, new BodySegment(headPosition.getX(), headPosition.getY()));
-        
+
         // Remove the last segment if the length is exceeded
         if (body.size() > length - 1) { // length - 1 because length includes the head
             BodySegment removedSegment = body.remove(body.size() - 1);
             // Clear the removed segment position from the playing field
             playingField.getField()[removedSegment.getPosition().getY()][removedSegment.getPosition().getX()].clear();
         }
-        
+
         // Update head position
         headPosition = new Position(newX, newY);
-    
+
         // Update the playing field with the new head position
         playingField.getField()[newY][newX].setType("head");
         playingField.getField()[newY][newX].setPlayerID(pid);
-    
+
         // Update the playing field with the new body segments positions
         for (BodySegment segment : body) {
             playingField.getField()[segment.getPosition().getY()][segment.getPosition().getX()].setType("playerbody");

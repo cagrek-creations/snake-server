@@ -84,42 +84,44 @@ public class Server {
         }
     }
 
-    
+
     private static void handleGame() {
         try {
             double elapsedTime;
             double lastTime = System.currentTimeMillis() / 1000.0;
             String msg;
             setupIntervals();
-    
+
             while (true) {
 
                 // If game hasn't started, just wait.
                 if (!gameStarted) {
-                    synchronized (clientList) {
-                        if (playerSockets.size() < 2) {
-                            msg = appendDelimitor("WAITING_FOR_PLAYERS", "1");
-                            broadcast(msg);
-                        } else if (!gameStarted) {
-                            gameStarted = true;
-                            msg = appendDelimitor("GAME_STARTING", 10);
-                            broadcast(msg);
-                        }
-                    }
-                    Thread.sleep(5000);
+                    // synchronized (clientList) {
+                    //     if (playerSockets.size() < 2) {
+                    //         msg = appendDelimitor("WAITING_FOR_PLAYERS", "1");
+                    //         broadcast(msg);
+                    //     } else if (!gameStarted) {
+                    //         gameStarted = true;
+                    //         msg = appendDelimitor("GAME_STARTING", 10);
+                    //         broadcast(msg);
+                    //     }
+                    // }
+                    msg = appendDelimitor("WAITING_FOR_PLAYERS", "1");
+                    broadcast(msg);
+                    Thread.sleep(1000);
                 }
 
                 double currentTime = System.currentTimeMillis() / 1000.0;
                 elapsedTime = currentTime - lastTime;
                 lastTime = currentTime;
-    
+
                 for (int i = 0; i < counters.size(); i++) {
                     if (counters.get(i) >= intervals.get(i) && (intervals.get(i) > 0)) {
                         actions.get(i).run();
                         counters.set(i, 0.0);
                     }
                 }
-    
+
                 // Update counters
                 for (int i = 0; i < counters.size(); i++) {
                     counters.set(i, counters.get(i) + elapsedTime);
@@ -130,7 +132,48 @@ public class Server {
         }
     }
 
-    
+
+    private static void addPlayer(Socket clientSocket, Player player, boolean isSpectator) {
+        try {
+            String msg;
+            InputStream inputStream = clientSocket.getInputStream();
+            OutputStream outputStream = clientSocket.getOutputStream();
+            // If a player joins a match that is already on-going, set them to spectator.
+            msg = appendDelimitor("NEW_PLAYER_RESPONSE", player.getPid(), player.getXPos(), player.getYPos(), playingField.getWidth(), playingField.getHeight(), isSpectator);
+            // TODO: Doesn't give a size?
+            send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight;isSpectator;
+            sendGameState(player, outputStream);
+
+            msg = appendDelimitor("NEW_PLAYER", player.getPid(), player.getName(), player.getColor(), player.getLength(), player.getXPos(), player.getYPos());
+            broadcast(msg, clientSocket); // NEW_PLAYER;pid;name;color;length;xPos;yPos
+        } catch (IOException e) {
+            if (e instanceof java.net.SocketException && e.getMessage().equals("Connection reset")) {
+                // Client disconnected abruptly
+                System.out.println("Client disconnected abruptly: " + clientSocket.getInetAddress());
+                String msg = appendDelimitor("DISCONNECTED", playerSockets.get(clientSocket));
+                removeClient(clientSocket);
+                broadcast(msg, clientSocket);
+
+                if (playerSockets.size() < 2) {
+                    resetGame();
+                }
+
+            } else {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static void setupPlayers() {
+        for (Map.Entry<Socket, Integer> entry : playerSockets.entrySet()) {
+            Socket socket = entry.getKey();
+            Integer pid = entry.getValue();
+
+            Player player = playingField.getPlayer(pid);
+            addPlayer(socket, player, false);
+        }
+    }
+
     private static void handleClient(Socket clientSocket) {
         try {
             InputStream inputStream = clientSocket.getInputStream();
@@ -220,23 +263,24 @@ public class Server {
 
                     case "ADD_NEW_PLAYER": // ADD_NEW_PLAYER;name;color
                         int pid = playerIDCounter++;
+                        playerSockets.put(clientSocket, pid);
                         Player newPlayer = new Player(clientSocket, pid, params.get(0), params.get(1)); // 0 = pid, 1 = name, 2 = color
+
                         playingField.addPlayer(newPlayer);
-                        playingField.spawnPlayer(newPlayer);
+                        // playingField.spawnPlayer(newPlayer);
 
                         // If a player joins a match that is already on-going, set them to spectator.
-                        boolean isSpectator = gameStarted;
-                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), newPlayer.getXPos(), newPlayer.getYPos(), playingField.getWidth(), playingField.getHeight(), isSpectator);
-                        // TODO: Doesn't give a size?
+                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), -1, -1, playingField.getWidth(), playingField.getHeight(), 1);
                         send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight;isSpectator;
                         sendGameState(newPlayer, outputStream);
-                        playerSockets.put(clientSocket, pid);
 
-                        //msg = appendDelimitor("PLAYING_FIELD", playingField.getWidth(), playingField.getHeight(), playingField.encodeField());
-// SEND PLAYING FIELD   send(msg, outputStream); // PLAYING_FIELD;fieldWidth;fieldHeight;|e|e|e|h/1|e|e|e|b/1|e|
+                        // msg = appendDelimitor("NEW_PLAYER", newPlayer.getPid(), newPlayer.getName(), newPlayer.getColor(), newPlayer.getLength(), newPlayer.getXPos(), newPlayer.getYPos());
+                        // broadcast(msg, clientSocket); // NEW_PLAYER;pid;name;color;length;xPos;yPos
 
-                        msg = appendDelimitor("NEW_PLAYER", newPlayer.getPid(), newPlayer.getName(), newPlayer.getColor(), newPlayer.getLength(), newPlayer.getXPos(), newPlayer.getYPos());
-                        broadcast(msg, clientSocket); // NEW_PLAYER;pid;name;color;length;xPos;yPos
+                        if (playerSockets.size() >= 2 && !gameStarted) {
+                            resetGame();
+                        }
+
                         break;
 
 
@@ -276,6 +320,11 @@ public class Server {
                 String msg = appendDelimitor("DISCONNECTED", playerSockets.get(clientSocket));
                 removeClient(clientSocket);
                 broadcast(msg, clientSocket);
+
+                if (playerSockets.size() < 2) {
+                    resetGame();
+                }
+
             } else {
                 e.printStackTrace();
             }
@@ -292,15 +341,18 @@ public class Server {
         msg = "GAME_RESET";
         broadcast(msg);
 
+        // Iterate over each playerSocket and spawn the players "again"
+        setupPlayers();
+
         // Set new positions
 
         // Clear board of berries
 
         // Change board?
 
-        msg = "GAME_START"; // TODO: 3... 2... 1...?
+        gameStarted = true;
+        msg = appendDelimitor("GAME_STARTING", 10);
         broadcast(msg);
-
     }
 
     private static void removeClient(Socket clientSocket) {

@@ -270,7 +270,7 @@ public class Server {
                         // playingField.spawnPlayer(newPlayer);
 
                         // If a player joins a match that is already on-going, set them to spectator.
-                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), -1, -1, playingField.getWidth(), playingField.getHeight(), 1);
+                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), 5, 5, playingField.getWidth(), playingField.getHeight(), 1);
                         send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight;isSpectator;
                         sendGameState(newPlayer, outputStream);
 

@@ -139,12 +139,14 @@ public class Server {
             InputStream inputStream = clientSocket.getInputStream();
             OutputStream outputStream = clientSocket.getOutputStream();
             // If a player joins a match that is already on-going, set them to spectator.
-            msg = appendDelimitor("NEW_PLAYER_RESPONSE", player.getPid(), player.getXPos(), player.getYPos(), playingField.getWidth(), playingField.getHeight(), isSpectator);
+            msg = appendDelimitor("NEW_PLAYER_RESPONSE", player.getPid(),
+                player.getXPos(), player.getYPos(), playingField.getWidth(), playingField.getHeight(), 0);
             // TODO: Doesn't give a size?
             send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight;isSpectator;
             sendGameState(player, outputStream);
 
-            msg = appendDelimitor("NEW_PLAYER", player.getPid(), player.getName(), player.getColor(), player.getLength(), player.getXPos(), player.getYPos());
+            msg = appendDelimitor("NEW_PLAYER", player.getPid(),
+                player.getName(), player.getColor(), player.getLength(), player.getXPos(), player.getYPos());
             broadcast(msg, clientSocket); // NEW_PLAYER;pid;name;color;length;xPos;yPos
         } catch (IOException e) {
             if (e instanceof java.net.SocketException && e.getMessage().equals("Connection reset")) {
@@ -333,26 +335,32 @@ public class Server {
 
     // TODO: Should this function also present the winner etc?
     private static void resetGame() {
-        String msg;
+        try {
+            String msg;
 
-        msg = "GAME_STOP";
-        broadcast(msg);
+            msg = "GAME_STOP";
+            broadcast(msg);
+            Thread.sleep(1000);
 
-        msg = "GAME_RESET";
-        broadcast(msg);
+            msg = "GAME_RESET";
+            broadcast(msg);
+            Thread.sleep(1000);
 
-        // Iterate over each playerSocket and spawn the players "again"
-        setupPlayers();
+            // Iterate over each playerSocket and spawn the players "again"
+            setupPlayers();
 
-        // Set new positions
+            // Set new positions
 
-        // Clear board of berries
+            // Clear board of berries
 
-        // Change board?
+            // Change board?
 
-        gameStarted = true;
-        msg = appendDelimitor("GAME_STARTING", 10);
-        broadcast(msg);
+            gameStarted = true;
+            msg = appendDelimitor("GAME_STARTING", 10);
+            broadcast(msg);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private static void removeClient(Socket clientSocket) {

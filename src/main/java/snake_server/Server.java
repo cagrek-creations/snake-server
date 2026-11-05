@@ -84,14 +84,14 @@ public class Server {
         }
     }
 
-    
+
     private static void handleGame() {
         try {
             double elapsedTime;
             double lastTime = System.currentTimeMillis() / 1000.0;
             String msg;
             setupIntervals();
-    
+
             while (true) {
 
                 // If game hasn't started, just wait.
@@ -112,14 +112,14 @@ public class Server {
                 double currentTime = System.currentTimeMillis() / 1000.0;
                 elapsedTime = currentTime - lastTime;
                 lastTime = currentTime;
-    
+
                 for (int i = 0; i < counters.size(); i++) {
                     if (counters.get(i) >= intervals.get(i) && (intervals.get(i) > 0)) {
                         actions.get(i).run();
                         counters.set(i, 0.0);
                     }
                 }
-    
+
                 // Update counters
                 for (int i = 0; i < counters.size(); i++) {
                     counters.set(i, counters.get(i) + elapsedTime);
@@ -130,7 +130,7 @@ public class Server {
         }
     }
 
-    
+
     private static void handleClient(Socket clientSocket) {
         try {
             InputStream inputStream = clientSocket.getInputStream();
@@ -318,7 +318,7 @@ public class Server {
             e.printStackTrace();
         }
     }
-    
+
     private static void send(String message, OutputStream outputStream) {
         try {
             System.out.println("Sending: " + message);
@@ -345,7 +345,7 @@ public class Server {
         int broadcastCount = 0;
         String logMessage = message;
         message += "\n";
-        
+
         for (Socket clientSocket : clientList) {
             if (Arrays.asList(excludeClients).contains(clientSocket)) {
                 continue;
@@ -367,7 +367,7 @@ public class Server {
                 e.printStackTrace();
             }
         }
-    
+
         LoggerUtil.logMessage("Broadcasted: '" + logMessage + "' to " + broadcastCount + " clients.");
     }
 

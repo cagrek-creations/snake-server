@@ -20,6 +20,7 @@ public class Player {
         this.color = color;
         this.length = 6; // TODO: This should be sent to the client.
         this.body = new ArrayList<>();
+        setHeadPos(5, 5);
     }
 
     public Socket getPlayerSocket() { return playerSocket; }

@@ -84,6 +84,10 @@ public class Server {
         }
     }
 
+    private static boolean waitingForPlayers() {
+        if (playerSockets.size() < 2) return true;
+        return false;
+    }
 
     private static void handleGame() {
         try {
@@ -97,7 +101,7 @@ public class Server {
                 // If game hasn't started, just wait.
                 if (!gameStarted) {
                     synchronized (clientList) {
-                        if (playerSockets.size() < 2) {
+                        if (waitingForPlayers()) {
                             msg = appendDelimitor("WAITING_FOR_PLAYERS", "1");
                             broadcast(msg);
                         } else if (!gameStarted) {
@@ -225,8 +229,21 @@ public class Server {
                         playingField.spawnPlayer(newPlayer);
 
                         // If a player joins a match that is already on-going, set them to spectator.
-                        boolean isSpectator = gameStarted;
-                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), newPlayer.getXPos(), newPlayer.getYPos(), playingField.getWidth(), playingField.getHeight(), isSpectator);
+                        int isSpectator = -1;
+                        int wait = -1;
+                        if (gameStarted) {
+                            isSpectator = 1;
+                        } else {
+                            isSpectator = 0;
+                        }
+
+                        if (waitingForPlayers()) {
+                            wait = 1;
+                        } else {
+                            wait = 0;
+                        }
+
+                        msg = appendDelimitor("NEW_PLAYER_RESPONSE", newPlayer.getPid(), newPlayer.getXPos(), newPlayer.getYPos(), playingField.getWidth(), playingField.getHeight(), isSpectator, wait);
                         // TODO: Doesn't give a size?
                         send(msg, outputStream); // NEW_PLAYER_RESPONSE;pid;xPos;yPos;fieldWidth;fieldHeight;isSpectator;
                         sendGameState(newPlayer, outputStream);

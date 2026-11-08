@@ -33,6 +33,7 @@ public class Server {
     private static double speedFrequency = 1.0;
 
     private static boolean gameStarted = false;
+    private static boolean resetting_game = false;
 
     private static List<Double> counters = new ArrayList<>();
     private static List<Double> intervals = new ArrayList<>();
@@ -89,6 +90,14 @@ public class Server {
         return false;
     }
 
+    private static void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private static void handleGame() {
         try {
             double elapsedTime;
@@ -97,7 +106,7 @@ public class Server {
             setupIntervals();
 
             while (true) {
-
+                if (resetting_game) return;
                 // If game hasn't started, just wait.
                 if (!gameStarted) {
                     synchronized (clientList) {
@@ -208,6 +217,9 @@ public class Server {
                             msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
                             broadcast(msg);
                         }
+                        else if (moveResponse == "gameOver") {
+                            resetGame();
+                        }
 
 
                         // else if (moveResponse == "outOfBounds") {
@@ -302,12 +314,15 @@ public class Server {
     // TODO: Should this function also present the winner etc?
     private static void resetGame() {
         String msg;
+        resetting_game = true;
+        gameStarted = false;
 
         msg = "GAME_STOP";
         broadcast(msg);
 
         msg = "GAME_RESET";
         broadcast(msg);
+
 
         // Set new positions
 
@@ -317,7 +332,7 @@ public class Server {
 
         msg = "GAME_START"; // TODO: 3... 2... 1...?
         broadcast(msg);
-
+        resetting_game = false;
     }
 
     private static void removeClient(Socket clientSocket) {

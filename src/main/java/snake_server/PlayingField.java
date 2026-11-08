@@ -153,6 +153,7 @@ public class PlayingField {
 
         if (type.equals("playerbody") || type.equals("head")) {
             System.out.println("GAME OVER");
+            return "gameOver";
         }
 
         if (!type.equals("empty")) {
@@ -160,7 +161,7 @@ public class PlayingField {
             return type; // Return the type of the power-up found
         }
 
-    return null;
+        return null;
     }
 
 }

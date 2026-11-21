@@ -90,7 +90,7 @@ public class Server {
         return false;
     }
 
-    private static void sleep(long ms) {
+    private static void sleepms(long ms) {
         try {
             Thread.sleep(ms);
         } catch (Exception e) {
@@ -119,7 +119,7 @@ public class Server {
                             broadcast(msg);
                         }
                     }
-                    Thread.sleep(5000);
+                    sleepms(5000);
                 }
 
                 double currentTime = System.currentTimeMillis() / 1000.0;
@@ -319,10 +319,11 @@ public class Server {
 
         msg = "GAME_STOP";
         broadcast(msg);
+        sleepms(1000);
 
         msg = "GAME_RESET";
         broadcast(msg);
-
+        sleepms(1000);
 
         // Set new positions
 

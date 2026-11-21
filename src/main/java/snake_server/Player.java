@@ -74,6 +74,5 @@ public class Player {
             playingField.getField()[segment.getPosition().getY()][segment.getPosition().getX()].setType("playerbody");
             playingField.getField()[segment.getPosition().getY()][segment.getPosition().getX()].setPlayerID(pid);
         }
-
     }
 }

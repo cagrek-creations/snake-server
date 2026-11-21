@@ -26,7 +26,7 @@ public class Server {
     private static List<Socket> clientList = new ArrayList<>();
     private static ExecutorService executorService = Executors.newCachedThreadPool();
     private static int playerIDCounter = 0;
-    public static PlayingField playingField = new PlayingField(50, 25);
+    public static PlayingField playingField;
 
     private static double berryFrequency = 1.0;
     private static double inverseFrequency = 1.0;
@@ -48,7 +48,7 @@ public class Server {
 
         System.out.println("Config: " + config);
         loadConfig(config);
-
+        playingField = new PlayingField(50, 25);
 
         ServerSocket serverSocket = null;
         try {
@@ -106,7 +106,11 @@ public class Server {
             setupIntervals();
 
             while (true) {
-                if (resetting_game) return;
+                if (resetting_game) {
+                    sleepms(50);
+                    continue;
+                }
+
                 // If game hasn't started, just wait.
                 if (!gameStarted) {
                     synchronized (clientList) {
@@ -151,15 +155,13 @@ public class Server {
             String msg;
             byte[] buffer = new byte[1024];
 
-
             while (true) {
                 // Wait for data from the client
                 int bytesRead = inputStream.read(buffer);
                 if (bytesRead == -1) {
                     // Client disconnected
                     System.out.println("Client disconnected: " + clientSocket.getInetAddress());
-                    clientList.remove(clientSocket);
-                    playerSockets.remove(clientSocket);
+                    removeClient(clientSocket);
                     break;
                 }
 
@@ -177,7 +179,7 @@ public class Server {
                         msg = appendDelimitor("NEW_PLAYER_JOINED", params.get(0));
                         broadcast(msg, clientSocket);
                         break;
-                    
+
                     case "PLAYER_UPDATE_POSITION": // PLAYER_UPDATE_POSITION;pid;xPos;yPos      // FIX NON EXISTENT SNAKE!!!!
                         int playerID = Integer.parseInt(params.get(0));
                         Player player = playingField.getPlayer(playerID);
@@ -190,7 +192,7 @@ public class Server {
                             break;
                         }
 
-                        String moveResponse = playingField.checkPosition(playerID, xPos, yPos); 
+                        String moveResponse = playingField.checkPosition(playerID, xPos, yPos);
 
                         if (player.getXPos() == xPos && player.getYPos() == yPos) {
                             break; // Ignore if the player doesn't move
@@ -228,7 +230,7 @@ public class Server {
                         //     break;
                         // }
 
-                        player.move(xPos, yPos, playingField);
+                        if (gameStarted) player.move(xPos, yPos, playingField);
 
                         msg = appendDelimitor("PLAYER_NEW_POS", params.get(0), params.get(1), params.get(2));
                         broadcast(msg, clientSocket); // PLAYER_NEW_POS;pid;xPos;yPos
@@ -237,8 +239,10 @@ public class Server {
                     case "ADD_NEW_PLAYER": // ADD_NEW_PLAYER;name;color
                         int pid = playerIDCounter++;
                         Player newPlayer = new Player(clientSocket, pid, params.get(0), params.get(1)); // 0 = pid, 1 = name, 2 = color
-                        playingField.addPlayer(newPlayer);
-                        playingField.spawnPlayer(newPlayer);
+                        synchronized (playingField.getPlayers()) {
+                            playingField.addPlayer(newPlayer);
+                            playingField.spawnPlayer(newPlayer);
+                        }
 
                         // If a player joins a match that is already on-going, set them to spectator.
                         int isSpectator = -1;
@@ -298,6 +302,8 @@ public class Server {
                 }
 
             }
+        } catch (SocketException e) {
+            removeClient(clientSocket);
         } catch (IOException e) {
             if (e instanceof java.net.SocketException && e.getMessage().equals("Connection reset")) {
                 // Client disconnected abruptly
@@ -313,17 +319,20 @@ public class Server {
 
     // TODO: Should this function also present the winner etc?
     private static void resetGame() {
+        if (resetting_game) return;
         String msg;
         resetting_game = true;
         gameStarted = false;
 
-        msg = "GAME_STOP";
+        msg = appendDelimitor("GAME_STOP", "1");
         broadcast(msg);
         sleepms(1000);
 
+        playingField.reset();
+
         msg = "GAME_RESET";
         broadcast(msg);
-        sleepms(1000);
+        sleepms(5000);
 
         // Set new positions
 
@@ -336,17 +345,48 @@ public class Server {
         resetting_game = false;
     }
 
+    // private static void removeClient(Socket clientSocket) {
+    //     try {
+
+    //         if (playerSockets.get(clientSocket) == null) return;
+
+    //         for (Player p : playingField.getPlayers().values()) {
+    //             if (p.getPlayerSocket() == clientSocket) {
+    //                 playingField.removePlayer(p);
+    //                 break;
+    //             }
+    //         }
+
+    //         clientList.remove(clientSocket);
+    //         playerSockets.remove(clientSocket);
+    //         clientSocket.close();
+    //     } catch (IOException e) {
+    //         e.printStackTrace();
+    //     }
+    // }
+
     private static void removeClient(Socket clientSocket) {
         try {
-            for (Player p : playingField.getPlayers().values()) {
-                if (p.getPlayerSocket() == clientSocket) {
-                    playingField.removePlayer(p);
-                    break;
+            Integer pid = playerSockets.remove(clientSocket);
+
+            // Already removed by another thread.
+            if (pid == null) return;
+
+            synchronized (playingField.getPlayers()) {
+                Player player = playingField.getPlayers().get(pid);
+                if (player != null) {
+                    playingField.removePlayer(player);
                 }
             }
-            clientList.remove(clientSocket);
-            playerSockets.remove(clientSocket);
+
+            synchronized (clientList) {
+                clientList.remove(clientSocket);
+            }
+
             clientSocket.close();
+
+            broadcast("DISCONNECTED;" + pid);
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -379,18 +419,23 @@ public class Server {
         String logMessage = message;
         message += "\n";
 
-        for (Socket clientSocket : clientList) {
+        List<Socket> clients;
+        synchronized (clientList) {
+            clients = new ArrayList<>(clientList);
+        }
+
+        for (Socket clientSocket : clients) {
             if (Arrays.asList(excludeClients).contains(clientSocket)) {
                 continue;
             }
+
             try {
                 OutputStream outputStream = clientSocket.getOutputStream();
                 outputStream.write(message.getBytes());
                 broadcastCount++;
             } catch (SocketException e) {
                 System.out.println("Client disconnected abruptly: " + clientSocket.getInetAddress());
-                clientList.remove(clientSocket);
-                playerSockets.remove(clientSocket);
+                removeClient(clientSocket);
                 try {
                     clientSocket.close();
                 } catch (IOException ex) {
@@ -417,8 +462,14 @@ public class Server {
             }
         }
 
+        List<Player> players;
+
+        synchronized (playingField.getPlayers()) {
+            players = new ArrayList<>(playingField.getPlayers().values());
+        }
+
         // Send positions of all existing players to the new player
-        for (Player p : playingField.getPlayers().values()) {
+        for (Player p : players) {
             if (p == newPlayer)
                 continue;
             // Append head position

@@ -78,6 +78,22 @@ public class PlayingField {
 
     }
 
+    public void reset() {
+        for (int x = 0; x < field.length; x++) {
+            for (int y = 0; y < field[x].length; y++) {
+                field[x][y].setType("empty");
+            }
+        }
+    }
+
+    public void print() {
+        for (int x = 0; x < field.length; x++) {
+            for (int y = 0; y < field[x].length; y++) {
+                System.out.println("x:" + x + "y:" + y + "type:" + field[x][y].getType());
+            }
+        }
+    }
+
     public Player getPlayer(int playerID) {
         return players.get(playerID);
     }

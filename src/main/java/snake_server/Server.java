@@ -124,22 +124,22 @@ public class Server {
                         }
                     }
                     sleepms(5000);
-                }
+                } else { // Game HAS started.
+                    double currentTime = System.currentTimeMillis() / 1000.0;
+                    elapsedTime = currentTime - lastTime;
+                    lastTime = currentTime;
 
-                double currentTime = System.currentTimeMillis() / 1000.0;
-                elapsedTime = currentTime - lastTime;
-                lastTime = currentTime;
-
-                for (int i = 0; i < counters.size(); i++) {
-                    if (counters.get(i) >= intervals.get(i) && (intervals.get(i) > 0)) {
-                        actions.get(i).run();
-                        counters.set(i, 0.0);
+                    for (int i = 0; i < counters.size(); i++) {
+                        if (counters.get(i) >= intervals.get(i) && (intervals.get(i) > 0)) {
+                            actions.get(i).run();
+                            counters.set(i, 0.0);
+                        }
                     }
-                }
 
-                // Update counters
-                for (int i = 0; i < counters.size(); i++) {
-                    counters.set(i, counters.get(i) + elapsedTime);
+                    // Update counters
+                    for (int i = 0; i < counters.size(); i++) {
+                        counters.set(i, counters.get(i) + elapsedTime);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -198,6 +198,7 @@ public class Server {
                             break; // Ignore if the player doesn't move
                         }
 
+                        // TODO: this if case could be simplified.
                         if (moveResponse == "berry"){ // SCORE_COLLECTED;pid;type;magnitude;xPos;yPos
                             player.setLength(player.getLength() + 1);
                             msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "berry", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
@@ -217,6 +218,11 @@ public class Server {
                         } 
                         else if (moveResponse == "speed_other") {
                             msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "speed_other", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
+                            broadcast(msg);
+                        }
+                        else if (moveResponse == "golden_berry") {
+                            player.setLength(player.getLength() + 6);
+                            msg = appendDelimitor("SCORE_COLLECTED", params.get(0), "golden_berry", 1, Integer.parseInt(params.get(1)), Integer.parseInt(params.get(2))); // SCORE_COLLECTED;pid;type;amount;xPos;yPos
                             broadcast(msg);
                         }
                         else if (moveResponse == "gameOver") {
@@ -253,7 +259,7 @@ public class Server {
                             isSpectator = 0;
                         }
 
-                        if (waitingForPlayers()) {
+                        if (waitingForPlayers() || resetting_game) {
                             wait = 1;
                         } else {
                             wait = 0;
@@ -523,7 +529,13 @@ public class Server {
         intervals = Arrays.asList(berryFrequency, inverseFrequency, speedFrequency, -1.0, -1.0, -1.0); // intervals in seconds
         actions = Arrays.asList(
             () -> {
-                playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos
+                int chance = rand.nextInt(100) + 1;
+                System.out.println(chance);
+                if (chance <= 75) {
+                    playingField.spawnScore("berry", 1); // ADD_SCORE;type;magnitude;xPos;yPos
+                } else {
+                    playingField.spawnScore("golden_berry", 1);
+                }
             },
             () -> {
                 int chance = rand.nextInt(100) + 1;
